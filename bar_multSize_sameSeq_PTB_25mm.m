@@ -1,6 +1,5 @@
 % bar_multSize_sameSeq_PTB_25mm.m
 %
-% couldn't take the MGL bullshit, doing this in PTB
 %
 % TCS 6/10/2017
 %
@@ -58,11 +57,11 @@ if nargin < 3
 %         3     2
 %         2     4
 %         1     2
-%         2     3        
+%         2     3
 %         1     1
-%         3     3        
+%         3     3
 %         3     1
-%         1     4                
+%         1     4
 %         3     4
 %         2     1] .* [2.5 1];
 
@@ -72,11 +71,11 @@ if nargin < 3
         3     2
         2     4
         1     2
-        2     3        
+        2     3
         1     1
-        3     3        
+        3     3
         3     1
-        1     4                
+        1     4
         3     4
         2     1];
     p.seq(:,1) = p.seq(:,1)*2.5;
@@ -213,7 +212,7 @@ p.resp_keys = [KbName('1!'),KbName('2@')]; % 1 = left/up, 2 = right/down
 Screen('Preference', 'SkipSyncTests', 0);
 if p.scanner == 1
     [w,rect] = Screen('OpenWindow', 2,p.bg_color);
-else    
+else
     [w,rect] = Screen('OpenWindow', max(Screen('Screens')),p.bg_color);
 end
 
@@ -232,24 +231,24 @@ HideCursor;
 
 % --------- eyetracking ----------- %
 if p.do_et == 1
-    
+
     if p.scanner == 1
         Eyelink('SetAddress','192.168.1.5')
     end
-    
+
     el=EyelinkInitDefaults(w);
-    
+
     el.backgroundcolour=p.bg_color(1);  % TODO: fix this?
-    el.calibrationtargetcolour=p.fix_color(1);    
+    el.calibrationtargetcolour=p.fix_color(1);
     %el.calibrationtargetwidth=1;
     el.msgfontcolour=p.fix_color(1);
     p.foregroundcolour=p.fix_color(1);
-    
+
     EyelinkUpdateDefaults(el);
 
-    
+
     Eyelink('Initialize','PsychEyelinkDispatchCallback') % initialises the eyetracker
-    
+
     % SCANNER: right eye!!!!!! TODO: script this, record output...
     Eyelink('command','calibration_type=HV5'); % updating number of callibration dots
     s=Eyelink('command','link_sample_data=LEFT,RIGHT,GAZE,AREA');% (,GAZERES,HREF,PUPIL,STATUS,INPUT');
@@ -258,11 +257,11 @@ if p.do_et == 1
     s=Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, rect(3)-1,rect(4)-1);
     s=Eyelink('command','file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON');
     s=Eyelink('command','file_sample_data = LEFT,RIGHT,GAZE,AREA,GAZERES,STATUS');
-    
-    
+
+
     % make sure that we get gaze data from the Eyelink
-   
-    
+
+
     %------ calibrate the eye tracker --------
     EyelinkDoTrackerSetup(el);
     if s~=0
@@ -329,40 +328,40 @@ trial_counter = 1;
 up_cnt = 0; down_cnt = 0;
 
 for ss = 1:size(p.seq,1)
-    
+
     if p.do_et == 1
-        
+
         Eyelink('Message','xDAT %i',ss);
-        
+
         Eyelink('command', 'record_status_message "SWEEP %d of %d"', ss, size(p.seq,1));
-        
+
     end
 
-    
-    
+
+
     % --------- init sweep ----------
     % ensure bar reaches out to, and only out to, full extent of screen used
     this_bar_pos = linspace(-0.5*p.bar_extent*p.screen_height_deg + p.seq(ss,1)/2, 0.5*p.bar_extent*p.screen_height_deg - p.seq(ss,1)/2, p.n_steps);
-    
-    
+
+
     % if p.seq(ss,2)==1 (down) or 3 (left), flip
     if p.seq(ss,2)==1 || p.seq(ss,2)==3
         this_bar_pos = this_bar_pos(end:-1:1);
     end
-    
+
     % uniform dot grid from which we sample our init dots
-    
+
     % first coord: always along long axis of bar, second coord, parallel to
     % direction of motion (like horiz bar)
-    
+
     segment_area = p.bar_segment_size_deg * p.seq(ss,1);
     ndots = round(p.dot_density * segment_area);
-    
+
     % holds coordinates of dots which are updated on each frame
     bar_dot_coords = cell(p.n_segments,1);
     bar_dot_age = cell(p.n_segments,1);   % current age
     bar_dot_dir = cell(p.n_segments,1);   % direction of each dot (only updated at/after death)
-    
+
     % generate too many dots, to make sure we have enough; if we sample
     % ndots from the correct region, we'll achieve average density over the
     % segment as targeted (p.dot_density, in dots/deg^2)
@@ -370,27 +369,27 @@ for ss = 1:size(p.seq,1)
     for bb = 1:p.n_segments
         coords_tmp = (rand(tmpndots,2)-0.5)*max(p.bar_segment_size_deg,p.seq(ss,1));
         coords_tmp = coords_tmp(abs(coords_tmp(:,1)) <= p.bar_segment_size_deg/2 & abs(coords_tmp(:,2)) <= p.seq(ss,1)/2,:);
-        
+
         bar_dot_coords{bb} = coords_tmp(1:ndots,:);
         bar_dot_age{bb} = floor(rand(ndots,1)*p.dot_life);
-        
-        
+
+
         clear coords_tmp;
     end
     clear tmpndots;
 
     for step_num = 1:p.n_steps
-        
+
         % ------ init step -------
         % choose directions for each dot based on seg #, which is
         % target on this segment
         %
-        
+
         p.step_start(trial_counter) = GetSecs;
         if step_num == 1
             p.sweep_start(ss) = p.step_start(trial_counter);
         end
-        
+
         % start w/ target segment
         for bb = 1:length(p.target_segments)
             bar_dot_dir{p.target_segments(bb)} = nan(ndots,1);
@@ -399,7 +398,7 @@ for ss = 1:size(p.seq,1)
             bar_dot_dir{p.target_segments(bb)}((tmp_ncoh+1):end) = linspace(360/(ndots-tmp_ncoh),360,ndots-tmp_ncoh);
             clear tmp_ncoh;
         end
-        
+
         for bb = 1:length(p.sample_segments)
             bar_dot_dir{p.sample_segments(bb)} = nan(ndots,1);
             tmp_ncoh = ceil(ndots*p.sample_coherence(trial_counter));
@@ -407,8 +406,8 @@ for ss = 1:size(p.seq,1)
             bar_dot_dir{p.sample_segments(bb)}((tmp_ncoh+1):end) = linspace(360/(ndots-tmp_ncoh),360,ndots-tmp_ncoh);
             clear tmp_ncoh;
         end
-        
-        
+
+
         % segment position
         if p.seq(ss,2) == 1 || p.seq(ss,2) == 2 % x is p.bar_segment_centers_deg, y is this_bar_pos(step_num)
             this_seg_pos = [p.bar_segment_centers_deg.' this_bar_pos(step_num)*ones(p.n_segments,1)];
@@ -418,18 +417,18 @@ for ss = 1:size(p.seq,1)
             this_seg_pos = [this_bar_pos(step_num)*ones(p.n_segments,1) (p.bar_segment_centers_deg(end:-1:1)).'];
             p.bar_pos(trial_counter,:) = [this_bar_pos(step_num) 0];
         end
-        
-                
+
+
         resp_yet = 0;
         % note: this won't be general for non-unitary #'s of sample
         % segments...
         %corr_resp = find(p.segment_dirs(trial_counter,p.target_segments)==p.segment_dirs(trial_counter,p.sample_segments)); % on this segment, which response button is correct?
         %fprintf('Trial %i:\tsample: %i\ttargets: %i, %i\tcorrect response: %i\n',trial_counter,p.segment_dirs(trial_counter,2),p.segment_dirs(trial_counter,1),p.segment_dirs(trial_counter,3),p.corr_resp(trial_counter));
-        
+
         % loop over frames
-        
+
         while (GetSecs - p.expt_start)  < (p.step_dur*trial_counter + p.start_wait)
-            
+
             % ------ Draw Dots --------
             for bb = 1:p.n_segments
                 % NOTE: when plotting, flip y - so that + is up; same for
@@ -441,16 +440,16 @@ for ss = 1:size(p.seq,1)
                     %Screen('DrawDots',w,[1; -1].*(p.ppd*bar_dot_coords{bb}(:,[2 1]).'),p.dot_size_deg*p.ppd, p.dot_color, p.ppd*this_seg_pos(bb,[1 2]) .* [1 -1] + p.scr_center, 1 );
                     Screen('DrawDots',w,repmat([1; -1],1,size(bar_dot_coords{bb},1)).*(p.ppd*bar_dot_coords{bb}(:,[2 1]).'),p.dot_size_deg*p.ppd, p.dot_color, p.ppd*this_seg_pos(bb,[1 2]) .* [1 -1] + p.scr_center, 1 );
                 end
-                
-                
+
+
             end
-            
-            
-            
+
+
+
             % ----- Check For Response
             % maybe wait ~500 ms to start checking? just in case continued
             % button press from previous trial?
-            
+
             [resp, time_stamp] = checkForResp(p.resp_keys, p.esc_key);
             if resp ~= 0
                 if resp == -1
@@ -463,31 +462,31 @@ for ss = 1:size(p.seq,1)
                     end
                     return;
                 elseif resp_yet == 0
-                    
+
                     p.rt(trial_counter) = time_stamp-p.step_start(trial_counter);
-                    
+
                     this_resp = find(p.resp_keys==resp);
                     if (p.seq(ss,2)==3)||(p.seq(ss,2)==4)
                         this_resp = mod(this_resp,2)+1;
                     end
-                    
+
                     p.resp(trial_counter) = this_resp;%find(p.resp_keys==resp);
                     p.correct(trial_counter) = this_resp==p.corr_resp(trial_counter);%p.resp(trial_counter)==p.corr_resp(trial_counter);
-                    
+
                     resp_yet = 1;
                     clear this_resp
                 end
             end
-  
-            
-            
+
+
+
             % ----- if response, update fixation point; staircase --------
-            
+
             % draw fixation aperture
             Screen('FillOval',w,p.bg_color,fix_aperture_rect);
-            
-            
-            
+
+
+
             % draw fixation cross [[[[ for now, no updating...]]]
             if isnan(p.correct(trial_counter))
                 this_fix_color = p.fix_color;
@@ -496,64 +495,64 @@ for ss = 1:size(p.seq,1)
             end
             Screen('DrawLines',w, [-1 1 0 0; 0 0 -1 1]*p.ppd*p.fix_size,p.fix_width,this_fix_color,p.scr_center);
             Screen('Flip',w);
-            
-            
-            
+
+
+
             % ---- update dot positions ------
-            
+
             for bb = 1:p.n_segments
-                
+
                 % find dead dots
                 dead_dots = bar_dot_age{bb}==p.dot_life;
-                
-                
+
+
                 % give them new starting coords (just rand(1) *
                 % width/height)
-                
+
                 %bar_dot_coords{bb}(dead_dots,:) = rand(sum(dead_dots),2).*[p.bar_segment_size_deg p.seq(ss,1)] - [p.bar_segment_size_deg p.seq(ss,1)]/2;
                 bar_dot_coords{bb}(dead_dots,:) = rand(sum(dead_dots),2).*repmat([p.bar_segment_size_deg p.seq(ss,1)],sum(dead_dots),1) - repmat([p.bar_segment_size_deg p.seq(ss,1)]/2,sum(dead_dots),1);
-                
+
                 % reset their age
                 bar_dot_age{bb}(dead_dots) = 0;
-                
-                
-                
+
+
+
                 % now update all the alive dots
                 dxy = [cosd(bar_dot_dir{bb}) sind(bar_dot_dir{bb})] * p.dot_speed / p.refresh_rate;
-                
-                
+
+
                 bar_dot_coords{bb}(~dead_dots,:) = bar_dot_coords{bb}(~dead_dots,:)+dxy(~dead_dots,:);
-                
+
                 bar_dot_age{bb}(~dead_dots) = bar_dot_age{bb}(~dead_dots)+1;
-                
+
                 % find dots outside the aperture & move them
-                
+
                 tmp_xout = abs(bar_dot_coords{bb}(:,1))>(p.bar_segment_size_deg/2);
                 bar_dot_coords{bb}(tmp_xout,1) = bar_dot_coords{bb}(tmp_xout,1)*-1;
-                
+
                 tmp_yout = abs(bar_dot_coords{bb}(:,2))>(p.seq(ss,1)/2);
                 bar_dot_coords{bb}(tmp_yout,2) = bar_dot_coords{bb}(tmp_yout,2)*-1;
                 clear dxy dead_dots tmp_xout tmp_yout;
             end
-            
-           
+
+
         end
-        
-        
+
+
         % ------- update coherence w/ staircase --------
-        
+
         % if incorrect_counter == n_incorrect on this trial, increase coherence on next trial,
         % reset incorrect_counter
-        
+
         % figure out staircase stuff for next trial;
         if p.correct(trial_counter) == 1
             up_cnt = up_cnt+1;
         else
             down_cnt = down_cnt+1;
         end
-        
+
         next_coh = p.target_coherence(trial_counter); % unless it changes
-        
+
         if up_cnt==p.up_thresh
             up_cnt = 0; down_cnt = 0;
             % update coherence  (increase difficulty, so smaller coherence
@@ -561,7 +560,7 @@ for ss = 1:size(p.seq,1)
                 next_coh = max(p.target_coherence(trial_counter)-p.coh_step,p.coh_step); % minimum coherence allowed is the step val, don't use 0%
             end
         end
-        
+
         if down_cnt==p.down_thresh
             down_cnt = 0; up_cnt = 0;
             % update sf step
@@ -570,10 +569,10 @@ for ss = 1:size(p.seq,1)
             end
         end
 
-        
-        
+
+
         trial_counter = trial_counter+1;
-        
+
         if trial_counter <= (p.n_steps * size(p.seq,1))
             p.target_coherence(trial_counter) = next_coh;
         else % if this is the last trial, save this out
@@ -582,12 +581,12 @@ for ss = 1:size(p.seq,1)
             save(tmpfn,'init_coh');
             clear init_coh tmpfn;
         end
-        
+
         clear this_fix_color; % and other vars
-        
+
     end
     p.sweep_end(ss)=GetSecs;
-    
+
 end
 
 
@@ -654,10 +653,10 @@ clear resp;
 if p.do_et == 1
     Eyelink('StopRecording');
     Eyelink('ReceiveFile',[p.eyedatafile '.edf'],[p.eyedatafile '.edf']);
-    
+
     p.eyedatafile_renamed = [p.filename(1:(end-3)) 'edf'];
     movefile([p.eyedatafile '.edf'],p.eyedatafile_renamed);
-    
+
     Eyelink('ShutDown');
 end
 
