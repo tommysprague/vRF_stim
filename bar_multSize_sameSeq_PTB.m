@@ -88,7 +88,7 @@ if p.run>1 && exist(sprintf('./data/%s_r%02.f_lastCoh.mat',p.subj,p.run-1),'file
     p.coh_init = init_coh;
     clear init_coh;
 else
-    p.coh_init    = 0.32; % TODO: load from file....
+    p.coh_init    = 0.55; % TODO: load from file....
 end
 
 p.n_steps     = 12; % to match previous
@@ -128,7 +128,7 @@ if p.scanner == 0
 else
     p.resolution = [1280 1024]; % scanner: FOR EYETRACKING!!!
     p.refresh_rate = 120;
-    p.screen_height = 36; % cm prior to 9/14/2017 - was 33 cm, adjusted, now 36 cm tall
+    p.screen_height = 34; % cm
     p.viewing_distance = 63 + 9.5; % cm
 end
 
@@ -250,7 +250,7 @@ if p.do_et == 1
     % SCANNER: right eye!!!!!! TODO: script this, record output...
     Eyelink('command','calibration_type=HV5'); % updating number of callibration dots
     s=Eyelink('command','link_sample_data=LEFT,RIGHT,GAZE,AREA');% (,GAZERES,HREF,PUPIL,STATUS,INPUT');
-    s=Eyelink('command', 'sample_rate=1000');
+    s=Eyelink('command', 'sample_rate=500');
     s=Eyelink('command','screen_pixel_coords=%ld %ld %ld %ld', 0, 0, rect(3)-1,rect(4)-1);
     s=Eyelink('message', 'DISPLAY_COORDS %ld %ld %ld %ld', 0, 0, rect(3)-1,rect(4)-1);
     s=Eyelink('command','file_event_filter = LEFT,RIGHT,FIXATION,SACCADE,BLINK,MESSAGE,BUTTON');
