@@ -18,7 +18,7 @@ function make_stim_mask(p,fn_out,TR,res)
 if nargin < 4
     res = 270;
 end
-
+  
 % if TR in ms...
 if TR > 100
     TR = TR/1000;
@@ -58,6 +58,7 @@ save(fn_seq,'stimulus');
 % ------ IMAGES FILE ------
 
 images = zeros(res,res,n_TRs);
+
 
 start_TR = 1+round(p.start_wait/TR); % figure out when to start (1+TR/p.start_wait)
 

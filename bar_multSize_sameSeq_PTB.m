@@ -11,10 +11,8 @@
 %     entry will correspond to blanks]
 % ALL COORDS IN CARTESIAN COORD FRAME!!!! + is UP on screen
 %
-% TODO: get correct dot density, average speed
-%
+% Set up to be 304 TRs (1.2 or 1.3 s - change p.TR variable ~line 25)
 % 1.2 s TR: 304 TRs
-% 0.8 s TR: 456 TRs
 %
 % TCS 7/18/2017 - added eyetracking, added support for behavioral testing
 
@@ -24,6 +22,8 @@ function bar_multSize_sameSeq_PTB(subj,run,seq)
 
 p.subj = subj;
 p.run = run;
+
+p.TR = 1.3; % 1300 ms, our typical 4x multiband 2 mm iso retinotopy seq
 
 p.filename = sprintf('./data/%s_r%02.f_RF_bar_multSize_%s.mat',p.subj,p.run,datestr(now,30));
 if ~exist('./data','dir')
@@ -44,22 +44,12 @@ if p.do_et == 1
 end
 
 
+p.bar_width_multiplier = 2.5; % multiply width integers by this
+
 if nargin < 3
     % made these bigger for scanner - if we're doign 12 steps, to fully
     % sample space at small bar, need ~2.5 deg width; I think mackey et
     % al did sub-sampling of space on smallest bar, though
-%  p.seq=[2     2
-%         1     3
-%         3     2
-%         2     4
-%         1     2
-%         2     3
-%         1     1
-%         3     3
-%         3     1
-%         1     4
-%         3     4
-%         2     1] .* [2.5 1];
 
 % ABOVE REQUIRES 2016b or newer!!!!
     p.seq = [2     2
@@ -74,10 +64,24 @@ if nargin < 3
         1     4
         3     4
         2     1];
-    p.seq(:,1) = p.seq(:,1)*2.5;
+    p.seq(:,1) = p.seq(:,1)*p.bar_width_multiplier;
 
 else
     p.seq = seq;
+end
+
+
+% establish refresh rate for dot lifetime
+if p.scanner == 0
+    p.resolution = [1280 1024]; % desired resolution, compare to the 'actual' resolution below
+    p.refresh_rate = 60;
+    p.screen_height = 30; % cm, in the experiment room
+    p.viewing_distance = 56; % cm, in the experiment room (inside lab)
+else
+    p.resolution = [1280 1024]; % scanner: FOR EYETRACKING!!!
+    p.refresh_rate = 120;
+    p.screen_height = 34; % cm
+    p.viewing_distance = 63 + 9.5; % cm
 end
 
 
@@ -91,11 +95,13 @@ else
     p.coh_init    = 0.55; % TODO: load from file....
 end
 
+
 p.n_steps     = 12; % to match previous
-p.step_dur    = 2.4;% 2.5; % sec
+p.step_dur    = 2*p.TR;% 2.6; % sec
 p.n_segments  = 3; % for now
 p.dot_speed   = 1.6; % deg/s
-p.dot_life    = 3*2;   % frames
+p.dot_life_sec= 0.05;% seconds
+p.dot_life    = round(p.dot_life_sec/(1/p.refresh_rate)); % frames - used for drawing, etc
 p.coh_sample  = 0.5; % coherence of sample stimulus (outer bars)
 p.coh_step    = 0.075; % how much to step up/down in staircase
 p.dot_color   = [1 1 1]*255;
@@ -120,17 +126,6 @@ p.fix_aperture_size = 0.75; % radius, dva
 
 % potentially a square aperture? or aperture that looks like bore insert?
 
-if p.scanner == 0
-    p.resolution = [1280 1024]; % desired resolution, compare to the 'actual' resolution below
-    p.refresh_rate = 60;
-    p.screen_height = 30; % cm, in the experiment room
-    p.viewing_distance = 56; % cm, in the experiment room (inside lab)
-else
-    p.resolution = [1280 1024]; % scanner: FOR EYETRACKING!!!
-    p.refresh_rate = 120;
-    p.screen_height = 34; % cm
-    p.viewing_distance = 63 + 9.5; % cm
-end
 
 p.screen_width = p.screen_height * p.resolution(1)/p.resolution(2); %
 p.screen_height_deg = 2*atan2d(p.screen_height/2,p.viewing_distance);
@@ -152,8 +147,8 @@ p.bar_segment_centers_deg = (((1:p.n_segments)-0.5)-p.n_segments/2) * (p.bar_ext
 
 % ----- timing info (unrelated to bar) ------
 if p.scanner == 1
-    p.start_wait = 9.6; % s - time after trigger
-    p.end_wait   = 9.6; % s - time after last bar sweep (2.4 s x 4)
+    p.start_wait = 8*p.TR; % s - time after trigger (10.4 s for 1300 ms)
+    p.end_wait   = 8*p.TR; % s - time after last bar sweep (2.4 s x 4)
 else
     p.start_wait = 1;
     p.end_wait = 1;
@@ -217,6 +212,11 @@ end
 % refresh rate
 ifi = Screen('GetFlipInterval', w);
 p.actual_refresh  = 1 / ifi;
+
+% check that refresh rate is as expected
+if abs(p.actual_refresh-p.refresh_rate)>10
+    error('bar_multSize_sameSeq_PTB:unexpectedRefreshRate','Refresh rate expected to be %0.03f; %0.03f measured',p.refresh_rate,p.actual_refresh);
+end
 
 
 
