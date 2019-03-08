@@ -15,10 +15,17 @@
 % 1.2 s TR: 304 TRs
 %
 % TCS 7/18/2017 - added eyetracking, added support for behavioral testing
+%
+% TCS 3/8/2019 - dots now half black/half white
 
 
 
 function bar_multSize_sameSeq_PTB(subj,run,seq)
+
+% to avoid super-aggressive timing tests on windows:
+%Screen('Preference','SyncTestSettings' [, maxStddev=0.001 secs][, minSamples=50][, maxDeviation=0.1][, maxDuration=5 secs]);
+Screen('Preference','SyncTestSettings' ,0.01); %maxStddev in sec
+
 
 p.subj = subj;
 p.run = run;
@@ -78,8 +85,8 @@ if p.scanner == 0
     p.screen_height = 30; % cm, in the experiment room
     p.viewing_distance = 56; % cm, in the experiment room (inside lab)
 else
-    p.resolution = [1280 1024]; % scanner: FOR EYETRACKING!!!
-    p.refresh_rate = 120;
+    p.resolution = [1024 768]; % scanner: FOR EYETRACKING!!!
+    p.refresh_rate = 60;
     p.screen_height = 34; % cm
     p.viewing_distance = 63 + 9.5; % cm
 end
@@ -102,9 +109,9 @@ p.n_segments  = 3; % for now
 p.dot_speed   = 1.6; % deg/s
 p.dot_life_sec= 0.05;% seconds
 p.dot_life    = round(p.dot_life_sec/(1/p.refresh_rate)); % frames - used for drawing, etc
-p.coh_sample  = 0.5; % coherence of sample stimulus (outer bars)
+p.coh_sample  = 0.75; % coherence of sample stimulus (outer bars)
 p.coh_step    = 0.075; % how much to step up/down in staircase
-p.dot_color   = [1 1 1]*255;
+p.dot_color   = [1 1 1;0 0 0]*255; % half black, half white to improve contrast
 p.segment_gap = 0.25; % deg, gap between segments - determines SIZE of rect, will be centered on a known point, so will be gap/2 at top/bottom/left/right too
 p.bar_extent  = 1;   % % of square the bar subtends/100 (NOTE: gap will be drawn at top/bottom or left/right of entire bar, too)
 p.dot_density = 10; % per deg^2 (seems high...but from biorxiv... - 124 dots per 4 deg^2
@@ -204,7 +211,8 @@ p.resp_keys = [KbName('1!'),KbName('2@')]; % 1 = left/up, 2 = right/down
 % sync
 Screen('Preference', 'SkipSyncTests', 0);
 if p.scanner == 1
-    [w,rect] = Screen('OpenWindow', 2,p.bg_color);
+    %[w,rect] = Screen('OpenWindow', 2,p.bg_color);
+    [w,rect] = Screen('OpenWindow', max(Screen('Screens')),p.bg_color);
 else
     [w,rect] = Screen('OpenWindow', max(Screen('Screens')),p.bg_color);
 end
@@ -231,7 +239,8 @@ HideCursor;
 if p.do_et == 1
 
     if p.scanner == 1
-        Eyelink('SetAddress','192.168.1.5')
+        %Eyelink('SetAddress','192.168.1.5')
+        %Eyelink('SetAddress','169.254.51.38')
     end
 
     el=EyelinkInitDefaults(w);
@@ -370,6 +379,8 @@ for ss = 1:size(p.seq,1)
     bar_dot_coords = cell(p.n_segments,1);
     bar_dot_age = cell(p.n_segments,1);   % current age
     bar_dot_dir = cell(p.n_segments,1);   % direction of each dot (only updated at/after death)
+    
+    bar_dot_color = cell(p.n_segments,1); % color for each dot (alternating...)
 
     % generate too many dots, to make sure we have enough; if we sample
     % ndots from the correct region, we'll achieve average density over the
@@ -405,6 +416,10 @@ for ss = 1:size(p.seq,1)
             tmp_ncoh = ceil(ndots*p.target_coherence(trial_counter));
             bar_dot_dir{p.target_segments(bb)}(1:tmp_ncoh) = 90 - 90 * p.segment_dirs(trial_counter,p.target_segments(bb));
             bar_dot_dir{p.target_segments(bb)}((tmp_ncoh+1):end) = linspace(360/(ndots-tmp_ncoh),360,ndots-tmp_ncoh);
+            
+            % colors
+            bar_dot_color{p.target_segments(bb)} = repmat(p.dot_color.',1,ceil(ndots / size(p.dot_color,1)));
+            bar_dot_color{p.target_segments(bb)} = bar_dot_color{p.target_segments(bb)}(:,1:ndots);
             clear tmp_ncoh;
         end
 
@@ -413,6 +428,10 @@ for ss = 1:size(p.seq,1)
             tmp_ncoh = ceil(ndots*p.sample_coherence(trial_counter));
             bar_dot_dir{p.sample_segments(bb)}(1:tmp_ncoh) = 90 - 90 * p.segment_dirs(trial_counter,p.sample_segments(bb));
             bar_dot_dir{p.sample_segments(bb)}((tmp_ncoh+1):end) = linspace(360/(ndots-tmp_ncoh),360,ndots-tmp_ncoh);
+            
+            % colors
+            bar_dot_color{p.sample_segments(bb)} = repmat(p.dot_color.',1,ceil(ndots / size(p.dot_color,1)));
+            bar_dot_color{p.sample_segments(bb)} = bar_dot_color{p.sample_segments(bb)}(:,1:ndots);
             clear tmp_ncoh;
         end
 
@@ -426,7 +445,6 @@ for ss = 1:size(p.seq,1)
             this_seg_pos = [this_bar_pos(step_num)*ones(p.n_segments,1) (p.bar_segment_centers_deg(end:-1:1)).'];
             p.bar_pos(trial_counter,:) = [this_bar_pos(step_num) 0];
         end
-
 
 
 
@@ -446,10 +464,10 @@ for ss = 1:size(p.seq,1)
                 % centers of segments (hence the [1;-1])
                 if p.seq(ss,2)==1 || p.seq(ss,2) == 2  % bar is horizontal
                     %Screen('DrawDots',w,[1; -1].*(p.ppd*bar_dot_coords{bb}(:,[1 2]).'),p.dot_size_deg*p.ppd, p.dot_color, p.ppd*this_seg_pos(bb,[1 2]) .* [1 -1] + p.scr_center, 1 );
-                    Screen('DrawDots',w,repmat([1; -1],1,size(bar_dot_coords{bb},1)).*(p.ppd*bar_dot_coords{bb}(:,[1 2]).'),p.dot_size_deg*p.ppd, p.dot_color, p.ppd*this_seg_pos(bb,[1 2]) .* [1 -1] + p.scr_center, 1 );
+                    Screen('DrawDots',w,repmat([1; -1],1,size(bar_dot_coords{bb},1)).*(p.ppd*bar_dot_coords{bb}(:,[1 2]).'),p.dot_size_deg*p.ppd, bar_dot_color{bb}, p.ppd*this_seg_pos(bb,[1 2]) .* [1 -1] + p.scr_center, 1 );
                 else  % bar is vertical, need to flip coords for dots and center
                     %Screen('DrawDots',w,[1; -1].*(p.ppd*bar_dot_coords{bb}(:,[2 1]).'),p.dot_size_deg*p.ppd, p.dot_color, p.ppd*this_seg_pos(bb,[1 2]) .* [1 -1] + p.scr_center, 1 );
-                    Screen('DrawDots',w,repmat([1; -1],1,size(bar_dot_coords{bb},1)).*(p.ppd*bar_dot_coords{bb}(:,[2 1]).'),p.dot_size_deg*p.ppd, p.dot_color, p.ppd*this_seg_pos(bb,[1 2]) .* [1 -1] + p.scr_center, 1 );
+                    Screen('DrawDots',w,repmat([1; -1],1,size(bar_dot_coords{bb},1)).*(p.ppd*bar_dot_coords{bb}(:,[2 1]).'),p.dot_size_deg*p.ppd, bar_dot_color{bb}, p.ppd*this_seg_pos(bb,[1 2]) .* [1 -1] + p.scr_center, 1 );
                 end
 
 
